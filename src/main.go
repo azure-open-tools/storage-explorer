@@ -29,9 +29,9 @@ type arguments struct {
 var largs = arguments{}
 
 var rootCmd = &cobra.Command{
-	Use:   "tbd",
-	Short: "tbd shows containers and blobs of a azure storage account",
-	Long: `tbd shows containers and blobs of a azure storage account.
+	Use:   "go-storage-explorer",
+	Short: "go-storage-explorer shows containers and blobs of a azure storage account",
+	Long: `go-storage-explorer shows containers and blobs of a azure storage account.
 Complete documentation is available at http://hugo.spf13.com`,
 	Run: func(cmd *cobra.Command, args []string) {
 		exec(largs)
@@ -99,8 +99,9 @@ func exec(args arguments) {
 					printLine(2, fmt.Sprintf("Lease State: %s", blobItems.Properties.LeaseState))
 					printLine(2, fmt.Sprintf("Lease Duration: %s", blobItems.Properties.LeaseDuration))
 
+					printLine(2, "Metadata:")
 					for key, entry := range blobItems.Metadata {
-						printLine(2, fmt.Sprintf("%s: %s", key, entry))
+						printLine(3, fmt.Sprintf("%s: %s", key, entry))
 					}
 				}
 			}
