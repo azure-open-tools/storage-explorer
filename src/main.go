@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/url"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -51,7 +52,10 @@ func exec(args arguments) {
 	ctx := context.Background()
 
 	// Create a default request pipeline using your storage account name and account key
-	credential, _ := azblob.NewSharedKeyCredential(args.AccountName, args.AccessKey)
+	credential, authErr := azblob.NewSharedKeyCredential(args.AccountName, args.AccessKey)
+	if authErr != nil {
+		log.Fatal("Error while Authentication")
+	}
 	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 
 	// From the Azure portal, get your storage account blob service URL endpoint
@@ -59,16 +63,23 @@ func exec(args arguments) {
 
 	serviceURL := azblob.NewServiceURL(*URL, p)
 
+	containerFound := false
+	blobFound := false
 	for marker := (azblob.Marker{}); marker.NotDone(); {
-		listContainer, _ := serviceURL.ListContainersSegment(ctx, marker, azblob.ListContainersSegmentOptions{})
-
+		listContainer, err := serviceURL.ListContainersSegment(ctx, marker, azblob.ListContainersSegmentOptions{})
 		fmt.Println(listContainer.ServiceEndpoint)
+
+		if err != nil {
+			log.Fatal("Error while getting Container")
+		}
+
 		for _, val := range listContainer.ContainerItems {
 			containerName := val.Name
 
 			if len(args.ContainerName) > 0 && containerName != args.ContainerName {
 				continue
 			}
+			containerFound = true
 			printLine(0, fmt.Sprintf("Container: %s", val.Name))
 
 			containerURL, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", args.AccountName, containerName))
@@ -89,7 +100,7 @@ func exec(args arguments) {
 					if len(args.BlobName) > 0 && blobName != args.BlobName {
 						continue
 					}
-
+					blobFound = true
 					printLine(1, fmt.Sprintf("Blob: %s", blobName))
 					// see here for Properties: https://github.com/Azure/azure-storage-blob-go/blob/456ab4777f89ceb54316ddf71d2acfd39bb86e1d/azblob/zz_generated_models.go#L2343
 					printLine(2, fmt.Sprintf("Blob Type: %s", blobItems.Properties.BlobType))
@@ -107,6 +118,11 @@ func exec(args arguments) {
 			}
 		}
 		marker = listContainer.NextMarker // Pagination
+	}
+	if !containerFound {
+		printLine(0, fmt.Sprintf("No Container not found for Name %s", args.ContainerName))
+	} else if !blobFound {
+		printLine(1, fmt.Sprintf("No Blob not found for Name %s", args.BlobName))
 	}
 }
 
