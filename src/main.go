@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/spf13/cobra"
@@ -42,8 +43,8 @@ Complete documentation is available at http://hugo.spf13.com`,
 func init() {
 	rootCmd.Flags().StringVarP(&largs.AccountName, "accountName", "n", "", "accountName of the Storage Account")
 	rootCmd.Flags().StringVarP(&largs.AccessKey, "accessKey", "k", "", "accessKey for the Storage Account")
-	rootCmd.Flags().StringVarP(&largs.ContainerName, "container", "c", "", "filter for container name")
-	rootCmd.Flags().StringVarP(&largs.BlobName, "blob", "b", "", "filter for blob name")
+	rootCmd.Flags().StringVarP(&largs.ContainerName, "container", "c", "", "filter for container name with substring match")
+	rootCmd.Flags().StringVarP(&largs.BlobName, "blob", "b", "", "filter for blob name with substring match")
 	rootCmd.MarkFlagRequired("accountName")
 	rootCmd.MarkFlagRequired("accessKey")
 }
@@ -76,7 +77,8 @@ func exec(args arguments) {
 		for _, val := range listContainer.ContainerItems {
 			containerName := val.Name
 
-			if len(args.ContainerName) > 0 && containerName != args.ContainerName {
+			// TODO substring match? to match containers: ['test-1', 'test-2'], term: 'test, matches ['test-1', 'test-2']
+			if len(args.ContainerName) > 0 && !strings.Contains(containerName, args.ContainerName) {
 				continue
 			}
 			containerFound = true
@@ -97,7 +99,8 @@ func exec(args arguments) {
 				for _, blobItems := range listBlob.Segment.BlobItems {
 					blobName := blobItems.Name
 
-					if len(args.BlobName) > 0 && blobName != args.BlobName {
+					// TODO substring match?
+					if len(args.BlobName) > 0 && !strings.Contains(blobName, args.BlobName) {
 						continue
 					}
 					blobFound = true
