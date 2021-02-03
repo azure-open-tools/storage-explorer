@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	b64 "encoding/base64"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	az "github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +29,7 @@ type arguments struct {
 	AccessKey     string
 	ContainerName string
 	BlobName      string
+	ShowContent   bool
 }
 
 var largs = arguments{}
@@ -46,8 +49,28 @@ func init() {
 	rootCmd.Flags().StringVarP(&largs.AccessKey, "accessKey", "k", "", "accessKey for the Storage Account")
 	rootCmd.Flags().StringVarP(&largs.ContainerName, "container", "c", "", "filter for container name with substring match")
 	rootCmd.Flags().StringVarP(&largs.BlobName, "blob", "b", "", "filter for blob name with substring match")
+	rootCmd.Flags().BoolVar(&largs.ShowContent, "show-content", false, "downloads and prints content of blob")
 	rootCmd.MarkFlagRequired("accountName")
 	rootCmd.MarkFlagRequired("accessKey")
+}
+
+func downloadBlob(fileName string, containerUrl az.ContainerURL) string {
+	blobURL := containerUrl.NewBlockBlobURL(fileName)
+	downloadResponse, err := blobURL.Download(context.Background(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
+
+	if err != nil {
+		log.Fatalf("Error downloading blob %s", fileName)
+	}
+
+	bodyStream := downloadResponse.Body(azblob.RetryReaderOptions{MaxRetryRequests: 20})
+	downloadedData := bytes.Buffer{}
+	_, err = downloadedData.ReadFrom(bodyStream)
+
+	if err != nil {
+		log.Fatalf("Error reading blob %s", fileName)
+	}
+
+	return downloadedData.String()
 }
 
 func exec(args arguments) {
@@ -119,6 +142,11 @@ func exec(args arguments) {
 					for key, entry := range blobItem.Metadata {
 						printLine(3, fmt.Sprintf("%s: %s", key, entry))
 					}
+
+					if args.ShowContent {
+						content := downloadBlob(blobName, containerServiceURL)
+						printLine(2, fmt.Sprintf("Content: %s", content))
+					}
 				}
 			}
 		}
@@ -131,7 +159,10 @@ func exec(args arguments) {
 	}
 }
 
-//kudos to: https://github.com/Azure/azure-storage-blob-go/blob/456ab4777f89ceb54316ddf71d2acfd39bb86e1d/azblob/zt_examples_test.go
+// kudos to:
+// https://github.com/Azure/azure-storage-blob-go/blob/456ab4777f89ceb54316ddf71d2acfd39bb86e1d/azblob/zt_examples_test.go
+// and
+// https://github.com/Azure-Samples/storage-blobs-go-quickstart/blob/master/storage-quickstart.go
 func main() {
 	rootCmd.Execute()
 }
