@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	b64 "encoding/base64"
 	"fmt"
 	"log"
 	"net/url"
@@ -96,8 +97,8 @@ func exec(args arguments) {
 				blobMarker = listBlob.NextMarker
 
 				// Process the blobs returned in this result segment (if the segment is empty, the loop body won't execute)
-				for _, blobItems := range listBlob.Segment.BlobItems {
-					blobName := blobItems.Name
+				for _, blobItem := range listBlob.Segment.BlobItems {
+					blobName := blobItem.Name
 
 					// TODO substring match?
 					if len(args.BlobName) > 0 && !strings.Contains(blobName, args.BlobName) {
@@ -106,15 +107,16 @@ func exec(args arguments) {
 					blobFound = true
 					printLine(1, fmt.Sprintf("Blob: %s", blobName))
 					// see here for Properties: https://github.com/Azure/azure-storage-blob-go/blob/456ab4777f89ceb54316ddf71d2acfd39bb86e1d/azblob/zz_generated_models.go#L2343
-					printLine(2, fmt.Sprintf("Blob Type: %s", blobItems.Properties.BlobType))
-					printLine(2, fmt.Sprintf("Created at: %s", blobItems.Properties.CreationTime))
-					printLine(2, fmt.Sprintf("Last modified at: %s", blobItems.Properties.LastModified))
-					printLine(2, fmt.Sprintf("Lease Status: %s", blobItems.Properties.LeaseStatus))
-					printLine(2, fmt.Sprintf("Lease State: %s", blobItems.Properties.LeaseState))
-					printLine(2, fmt.Sprintf("Lease Duration: %s", blobItems.Properties.LeaseDuration))
+					printLine(2, fmt.Sprintf("Blob Type: %s", blobItem.Properties.BlobType))
+					printLine(2, fmt.Sprintf("Content MD5: %s", b64.StdEncoding.EncodeToString(blobItem.Properties.ContentMD5)))
+					printLine(2, fmt.Sprintf("Created at: %s", blobItem.Properties.CreationTime))
+					printLine(2, fmt.Sprintf("Last modified at: %s", blobItem.Properties.LastModified))
+					printLine(2, fmt.Sprintf("Lease Status: %s", blobItem.Properties.LeaseStatus))
+					printLine(2, fmt.Sprintf("Lease State: %s", blobItem.Properties.LeaseState))
+					printLine(2, fmt.Sprintf("Lease Duration: %s", blobItem.Properties.LeaseDuration))
 
 					printLine(2, "Metadata:")
-					for key, entry := range blobItems.Metadata {
+					for key, entry := range blobItem.Metadata {
 						printLine(3, fmt.Sprintf("%s: %s", key, entry))
 					}
 				}
