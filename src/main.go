@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	pipeline "github.com/Azure/azure-pipeline-go/pipeline"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	az "github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/spf13/cobra"
@@ -55,13 +56,10 @@ func init() {
 	rootCmd.MarkFlagRequired("accessKey")
 }
 
-func line(print bool, level int, content string) {
-	if !print {
-		return
-	}
+func createLine(level int, content string) string {
 
 	if level == 0 {
-		fmt.Println(content)
+		return content
 	} else {
 		spacer := "___"
 		prefix := "|"
@@ -70,7 +68,7 @@ func line(print bool, level int, content string) {
 			prefix = prefix + " |"
 		}
 		line := prefix + spacer + content
-		fmt.Println(line)
+		return line
 	}
 }
 
@@ -96,6 +94,50 @@ func downloadBlob(wg *sync.WaitGroup, blobName string, containerUrl az.Container
 
 func storeBlobContent(f *os.File, content string) {
 	f.WriteString(fmt.Sprintf("%s\n", content))
+}
+
+func parseContainer(container az.ContainerItem, p pipeline.Pipeline, accountName string, containerFilter string, blobFilter string, c chan string, wg *sync.WaitGroup, marker az.Marker) {
+	defer wg.Done()
+	containerName := container.Name
+
+	// TODO substring match? to match containers: ['test-1', 'test-2'], term: 'test, matches ['test-1', 'test-2']
+	if len(containerFilter) > 0 && !strings.Contains(containerName, containerFilter) {
+		return
+	}
+
+	containerURL, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", accountName, containerName))
+	containerServiceURL := azblob.NewContainerURL(*containerURL, p)
+
+	ctx := context.Background()
+
+	var output = createLine(0, containerServiceURL.String()+"\n")
+	for blobMarker := (azblob.Marker{}); blobMarker.NotDone(); {
+		listBlob, _ := containerServiceURL.ListBlobsFlatSegment(ctx, marker, azblob.ListBlobsSegmentOptions{Details: azblob.BlobListingDetails{Metadata: true}})
+		blobMarker = listBlob.NextMarker
+		blobItems := listBlob.Segment.BlobItems
+		output = output + parseBlobs(blobItems, blobFilter)
+	}
+	//c <- containerServiceURL.String()
+	c <- output
+}
+
+func parseBlobs(blobItems []az.BlobItemInternal, blobFilter string) string {
+	var output = ""
+	for _, blobItem := range blobItems {
+		if len(blobFilter) > 0 && !strings.Contains(blobItem.Name, blobFilter) {
+			continue
+		}
+		output = output + createLine(1, fmt.Sprintf("Blob: %s\n", blobItem.Name))
+		output = output + createLine(2, fmt.Sprintf("Blob Type: %s\n", blobItem.Properties.BlobType))
+		output = output + createLine(2, fmt.Sprintf("Content MD5: %s\n", b64.StdEncoding.EncodeToString(blobItem.Properties.ContentMD5)))
+		output = output + createLine(2, fmt.Sprintf("Created at: %s\n", blobItem.Properties.CreationTime))
+		output = output + createLine(2, fmt.Sprintf("Last modified at: %s\n", blobItem.Properties.LastModified))
+		output = output + createLine(2, fmt.Sprintf("Lease Status: %s\n", blobItem.Properties.LeaseStatus))
+		output = output + createLine(2, fmt.Sprintf("Lease State: %s\n", blobItem.Properties.LeaseState))
+		output = output + createLine(2, fmt.Sprintf("Lease Duration: %s\n", blobItem.Properties.LeaseDuration))
+	}
+	fmt.Println(output)
+	return output
 }
 
 func exec(args arguments) {
@@ -129,11 +171,11 @@ func exec(args arguments) {
 
 	serviceURL := azblob.NewServiceURL(*URL, p)
 
-	containerFound := false
-	blobFound := false
+	// TODO
+	//line(!args.ContentOnly, 0, URL.String())
 
-	line(!args.ContentOnly, 0, URL.String())
-
+	c := make(chan string)
+	var wg sync.WaitGroup
 	for marker := (azblob.Marker{}); marker.NotDone(); {
 		listContainer, err := serviceURL.ListContainersSegment(ctx, marker, azblob.ListContainersSegmentOptions{})
 
@@ -142,80 +184,22 @@ func exec(args arguments) {
 		}
 
 		for _, val := range listContainer.ContainerItems {
-			containerName := val.Name
-
-			// TODO substring match? to match containers: ['test-1', 'test-2'], term: 'test, matches ['test-1', 'test-2']
-			if len(args.ContainerName) > 0 && !strings.Contains(containerName, args.ContainerName) {
-				continue
-			}
-			containerFound = true
-			if !args.ContentOnly {
-				line(!args.ContentOnly, 1, fmt.Sprintf("Container: %s", val.Name))
-			}
-
-			containerURL, _ := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net/%s", args.AccountName, containerName))
-			containerServiceURL := azblob.NewContainerURL(*containerURL, p)
-
-			for blobMarker := (azblob.Marker{}); blobMarker.NotDone(); {
-				// Get a result segment starting with the blob indicated by the current Marker.
-				listBlob, _ := containerServiceURL.ListBlobsFlatSegment(ctx, blobMarker, azblob.ListBlobsSegmentOptions{Details: azblob.BlobListingDetails{Metadata: true}})
-
-				// ListBlobs returns the start of the next segment; you MUST use this to get
-				// the next segment (after processing the current result segment).
-				blobMarker = listBlob.NextMarker
-
-				// waitgroup to download all blobs in this segemnt before getting next segment
-				var wg sync.WaitGroup
-
-				// Process the blobs returned in this result segment (if the segment is empty, the loop body won't execute)
-				for _, blobItem := range listBlob.Segment.BlobItems {
-					blobName := blobItem.Name
-
-					// TODO substring match?
-					if len(args.BlobName) > 0 && !strings.Contains(blobName, args.BlobName) {
-						continue
-					}
-					blobFound = true
-					line(!args.ContentOnly, 2, fmt.Sprintf("Blob: %s", blobName))
-					// see here for Properties: https://github.com/Azure/azure-storage-blob-go/blob/456ab4777f89ceb54316ddf71d2acfd39bb86e1d/azblob/zz_generated_models.go#L2343
-					line(!args.ContentOnly, 3, fmt.Sprintf("Blob Type: %s", blobItem.Properties.BlobType))
-					line(!args.ContentOnly, 3, fmt.Sprintf("Content MD5: %s", b64.StdEncoding.EncodeToString(blobItem.Properties.ContentMD5)))
-					line(!args.ContentOnly, 3, fmt.Sprintf("Created at: %s", blobItem.Properties.CreationTime))
-					line(!args.ContentOnly, 3, fmt.Sprintf("Last modified at: %s", blobItem.Properties.LastModified))
-					line(!args.ContentOnly, 3, fmt.Sprintf("Lease Status: %s", blobItem.Properties.LeaseStatus))
-					line(!args.ContentOnly, 3, fmt.Sprintf("Lease State: %s", blobItem.Properties.LeaseState))
-					line(!args.ContentOnly, 3, fmt.Sprintf("Lease Duration: %s", blobItem.Properties.LeaseDuration))
-
-					line(!args.ContentOnly, 3, "Metadata:")
-					for key, entry := range blobItem.Metadata {
-						line(!args.ContentOnly, 4, fmt.Sprintf("%s: %s", key, entry))
-					}
-
-					if args.ShowContent || args.StoreContent || args.ContentOnly {
-						wg.Add(1)
-						content := downloadBlob(&wg, blobName, containerServiceURL)
-
-						if args.ContentOnly {
-							line(args.ContentOnly, 0, content)
-						} else if args.ShowContent {
-							line(!args.ContentOnly, 3, fmt.Sprintf("Content: %s", content))
-						}
-
-						if args.StoreContent {
-							storeBlobContent(f, content)
-						}
-					}
-				}
-				// wait for all go routines to finish before continue
-				wg.Wait()
-			}
+			wg.Add(1)
+			go parseContainer(val, p, args.AccountName, args.ContainerName, args.BlobName, c, &wg, marker)
 		}
-		marker = listContainer.NextMarker // Pagination
+		// Pagination
+		marker = listContainer.NextMarker
 	}
-	if !containerFound {
-		line(true, 1, fmt.Sprintf("No Container found for Name %s", args.ContainerName))
-	} else if !blobFound {
-		line(true, 2, fmt.Sprintf("No Blob found for Name %s", args.BlobName))
+
+	// wait for all entries in waitgroup an close channel
+	go func() {
+		wg.Wait()
+		close(c)
+	}()
+
+	// channel to print
+	for elem := range c {
+		fmt.Println(elem)
 	}
 }
 
