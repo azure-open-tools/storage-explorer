@@ -14,8 +14,8 @@ function getLatestTag() {
   echo "cloning into the temp folder"
   mkdir temp && cd temp || exit 1
 
-  git clone https://github.com/azure-open-tools/go-storage-information.git
-  cd go-storage-information || exit 1
+  git clone https://github.com/azure-open-tools/storage-explorer.git
+  cd storage-explorer || exit 1
 
   git fetch --all
   latestTag="$(git --no-pager tag -l | tail -1)"
