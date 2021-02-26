@@ -1,5 +1,7 @@
 # go-storage-information
 
+[![storage-information](https://github.com/azure-open-tools/storage-explorer/actions/workflows/storage-information.yml/badge.svg)](https://github.com/azure-open-tools/storage-explorer/actions/workflows/storage-information.yml)
+
 This tool was build to get quickly and easy Information about Azure Blobs.
 It prints basic attributes and set metadata on blobs.
 It is also possible to download the content of blobs wether to stdout or to a file.
