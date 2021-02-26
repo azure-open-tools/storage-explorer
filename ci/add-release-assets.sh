@@ -15,7 +15,7 @@ function getLatestTag() {
   mkdir temp && cd temp || exit 1
 
   git clone https://github.com/azure-open-tools/go-storage-information.git
-  cd event-hubs-cli || exit 1
+  cd go-storage-information || exit 1
 
   git fetch --all
   latestTag="$(git --no-pager tag -l | tail -1)"
