@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	az "github.com/Azure/azure-storage-blob-go/azblob"
@@ -223,5 +224,13 @@ func exec(args arguments) {
 // and
 // https://github.com/Azure-Samples/storage-blobs-go-quickstart/blob/master/storage-quickstart.go
 func main() {
+	start := time.Now()
+	// Code to measure
+
 	rootCmd.Execute()
+
+	duration := time.Since(start)
+
+	// Formatted string, such as "2h3m0.5s" or "4.503μs"
+	fmt.Println(duration)
 }
