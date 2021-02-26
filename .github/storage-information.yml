@@ -25,12 +25,7 @@ jobs:
     - name: Build
       shell: bash
       run: |
-        pushd sender
         make build-local
-        popd
-        pushd receiver
-        make build-local
-        popd
   release:
     name: Release
     needs: [build]
@@ -54,11 +49,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        pushd sender
         make build-release
-        popd
-        pushd receiver
-        make build-release
-        popd
         make release
         make release-binaries
