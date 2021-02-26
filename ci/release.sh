@@ -19,6 +19,7 @@ function deleteTempFolder() {
   rm -rf temp/
 }
 
+# show whats there
 ls -lh
 
 if [[ $versionFile == *"package"* ]];
