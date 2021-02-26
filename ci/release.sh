@@ -21,8 +21,6 @@ function deleteTempFolder() {
 
 ls -lh
 
-cd src/
-
 if [[ $versionFile == *"package"* ]];
 then
   version="$packageVersion"
@@ -32,7 +30,7 @@ fi
 
 getLatestTag
 checkTag=$(git --no-pager tag -l | grep "$version" | xargs)
-if [[ $checkTag != "" ]];
+if [[ ! -z "$checkTag" ]];
 then
   echo "$checkTag already exist, skipping release."
   deleteTempFolder

@@ -6,7 +6,7 @@ build-release:
 
 release:
 	@ chmod +x ./ci/release.sh
-	@ ./ci/release.sh ${PWD}/version.go
+	@ ./ci/release.sh ${PWD}/src/version.go
 
 release-binaries:
 	@ chmod +x ./ci/add-release-assets.sh
