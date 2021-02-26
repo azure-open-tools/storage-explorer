@@ -26,10 +26,6 @@ getLatestTag
 # git for-each-ref --sort=creatordate --format '%(creatordate)'
 echo "$PWD"
 echo "Latest Tag: $latestTag"
-#find . -type f -iname "ehs-*" -exec ls -lah {} \;
 
-# sender
-find . -type f -iname "ehs-*" -exec hub release edit -m "" -a {} "$latestTag" \;
-
-# receiver
-find . -type f -iname "ehr-*" -exec hub release edit -m "" -a {} "$latestTag" \;
+# find artifact
+find . -type f -iname "asi-*" -exec hub release edit -m "" -a {} "$latestTag" \;
