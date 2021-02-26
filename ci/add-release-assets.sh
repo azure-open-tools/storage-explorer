@@ -22,6 +22,8 @@ function getLatestTag() {
   deleteTempFolder
 }
 
+ls -lh
+
 cd src/
 
 getLatestTag
