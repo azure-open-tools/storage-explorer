@@ -96,7 +96,7 @@ func storeBlobContent(f *os.File, content string) {
 	f.WriteString(fmt.Sprintf("%s\n", content))
 }
 
-func parseContainer(container az.ContainerItem, p pipeline.Pipeline, accountName string, containerFilter string, blobFilter string, c chan string, wg *sync.WaitGroup, marker az.Marker) {
+func parseContainer(container az.ContainerItem, p pipeline.Pipeline, accountName string, containerFilter string, blobFilter string, showContent bool, c chan string, wg *sync.WaitGroup, marker az.Marker) {
 	defer wg.Done()
 	containerName := container.Name
 
@@ -115,13 +115,13 @@ func parseContainer(container az.ContainerItem, p pipeline.Pipeline, accountName
 		listBlob, _ := containerServiceURL.ListBlobsFlatSegment(ctx, marker, azblob.ListBlobsSegmentOptions{Details: azblob.BlobListingDetails{Metadata: true}})
 		blobMarker = listBlob.NextMarker
 		blobItems := listBlob.Segment.BlobItems
-		output = output + parseBlobs(blobItems, blobFilter)
+		output = output + parseBlobs(blobItems, blobFilter, showContent)
 	}
 	//c <- containerServiceURL.String()
 	c <- output
 }
 
-func parseBlobs(blobItems []az.BlobItemInternal, blobFilter string) string {
+func parseBlobs(blobItems []az.BlobItemInternal, blobFilter string, showContent bool) string {
 	var output = ""
 	for _, blobItem := range blobItems {
 		if len(blobFilter) > 0 && !strings.Contains(blobItem.Name, blobFilter) {
@@ -185,7 +185,7 @@ func exec(args arguments) {
 
 		for _, val := range listContainer.ContainerItems {
 			wg.Add(1)
-			go parseContainer(val, p, args.AccountName, args.ContainerName, args.BlobName, c, &wg, marker)
+			go parseContainer(val, p, args.AccountName, args.ContainerName, args.BlobName, args.ShowContent, c, &wg, marker)
 		}
 		// Pagination
 		marker = listContainer.NextMarker
