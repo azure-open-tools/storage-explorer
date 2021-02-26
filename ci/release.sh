@@ -44,6 +44,6 @@ echo "New Version: $version"
 echo "Latest Tag: $latestTag"
 echo -e "Change Log Since Latest Tag: \n$changeLog"
 
-hub release create -m "Azure Storage Information $version" -m "$changeLog" "$version"
+hub release create -m "Azure Storage Explorer $version" -m "$changeLog" "$version"
 
 deleteTempFolder
