@@ -19,6 +19,8 @@ function deleteTempFolder() {
   rm -rf temp/
 }
 
+cd src/
+
 if [[ $versionFile == *"package"* ]];
 then
   version="$packageVersion"

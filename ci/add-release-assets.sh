@@ -22,6 +22,8 @@ function getLatestTag() {
   deleteTempFolder
 }
 
+cd src/
+
 getLatestTag
 # git for-each-ref --sort=creatordate --format '%(creatordate)'
 echo "$PWD"
