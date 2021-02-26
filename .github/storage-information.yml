@@ -1,0 +1,54 @@
+name: storage-information
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore: [ README.md ]
+  pull_request:
+    branches: [ master ]
+    paths-ignore: [ README.md ]
+    
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.15.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Build
+      shell: bash
+      run: |
+        make build-local
+  release:
+    name: Release
+    needs: [build]
+    if: github.ref == 'refs/heads/master'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    steps:
+    - name: Set up Go 1.15.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+        
+    - name: Release
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        make build-release
+        make release
+        make release-binaries
