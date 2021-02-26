@@ -3,6 +3,7 @@ module github.com/the-mod/go-storage-explorer
 go 1.13
 
 require (
+	github.com/Azure/azure-pipeline-go v0.2.3
 	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/Azure/go-autorest/autorest v0.11.11 // indirect
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.3
