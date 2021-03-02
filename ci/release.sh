@@ -21,6 +21,8 @@ ls -lh
 
 pushd src/ && version=$(go run . -v) && popd
 
+echo "Using $version to release"
+
 getLatestTag
 checkTag=$(git --no-pager tag -l | grep "$version" | xargs)
 if [[ ! -z "$checkTag" ]];
