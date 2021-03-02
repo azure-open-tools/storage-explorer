@@ -19,7 +19,7 @@ function deleteTempFolder() {
 # show whats there
 ls -lh
 
-version=$(go run . -v)
+pushd src/ && version=$(go run . -v) && popd
 
 getLatestTag
 checkTag=$(git --no-pager tag -l | grep "$version" | xargs)
