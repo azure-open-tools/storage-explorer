@@ -21,6 +21,8 @@ ls -lh
 
 version=$(go run . -v)
 
+echo "Using $version to release"
+
 getLatestTag
 checkTag=$(git --no-pager tag -l | grep "$version" | xargs)
 if [[ ! -z "$checkTag" ]];

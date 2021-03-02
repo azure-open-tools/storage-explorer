@@ -11,6 +11,8 @@ targetos="$OS"
 targetarch="amd64"
 version=$(go run . -v)
 
+echo "Using $version to build"
+
 cd src/
 
 if [[ "$targetos" == *"Windows_NT"* ]];
