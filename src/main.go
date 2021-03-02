@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/url"
 	"sync"
-	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/spf13/cobra"
@@ -42,6 +41,7 @@ Complete documentation is available at http://hugo.spf13.com`,
 	Run: func(cmd *cobra.Command, args []string) {
 		exec(largs)
 	},
+	Version: getVersion(),
 }
 
 const (
@@ -58,6 +58,7 @@ func init() {
 	rootCmd.Flags().StringSliceVarP(&largs.MetadataFilter, "metadata-filter", "m", []string{}, "OR filter for blob metadata. Structure is <key>:<value>")
 	rootCmd.MarkFlagRequired("accountName")
 	rootCmd.MarkFlagRequired("accessKey")
+	rootCmd.SetVersionTemplate(getVersion())
 }
 
 func exec(args arguments) {
@@ -123,13 +124,5 @@ func print(sa storageAccount) {
 // and
 // https://github.com/Azure-Samples/storage-blobs-go-quickstart/blob/master/storage-quickstart.go
 func main() {
-	start := time.Now()
-	// Code to measure
-
 	rootCmd.Execute()
-
-	duration := time.Since(start)
-
-	// Formatted string, such as "2h3m0.5s" or "4.503μs"
-	fmt.Println(duration)
 }

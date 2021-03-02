@@ -2,11 +2,11 @@ SHELL:=/bin/bash
 
 build-release:
 	@ chmod +x ci/build.sh
-	@ ci/build.sh ${PWD}/src/version.go "asi"
+	@ ci/build.sh "asi"
 
 release:
 	@ chmod +x ./ci/release.sh
-	@ ./ci/release.sh ${PWD}/src/version.go
+	@ ./ci/release.sh
 
 release-binaries:
 	@ chmod +x ./ci/add-release-assets.sh
