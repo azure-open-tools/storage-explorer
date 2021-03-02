@@ -10,14 +10,8 @@ echo "GitHubRef: $GITHUB_REF"
 targetos="$OS"
 targetarch="amd64"
 
-# show whats there
-ls -lh
-
 cd src/
-
 version=$(go run . -v)
-
-echo "Using $version to build"
 
 if [[ "$targetos" == *"Windows_NT"* ]];
 then
@@ -31,7 +25,7 @@ then
 else
   targetos=$(sw_vers | awk '{print $1$2$3}' | head -n 1)
   echo "Target OS: $targetos"
-  if [[ "$targetos" == *"MacOSX"* ]];
+  if [[ "$targetos" == *"macOS"* ]];
   then
   	echo "$PWD"
     env GO111MODULE=on GOOS="darwin" GOARCH="$targetarch" go build -ldflags "-s -w" -o "$name-darwin-""$targetarch"-"$version" .

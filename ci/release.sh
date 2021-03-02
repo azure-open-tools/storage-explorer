@@ -19,7 +19,7 @@ function deleteTempFolder() {
 # show whats there
 ls -lh
 
-version=$(go run . -v)
+pushd src/ && version=$(go run . -v) && popd
 
 echo "Using $version to release"
 
