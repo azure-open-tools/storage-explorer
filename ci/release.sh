@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-versionFile=$1
-packageVersion=$2
-
 # workaround while we try to discover how to the get the
 # git tags within git action environment
 function getLatestTag() {
@@ -22,12 +19,7 @@ function deleteTempFolder() {
 # show whats there
 ls -lh
 
-if [[ $versionFile == *"package"* ]];
-then
-  version="$packageVersion"
-else
-  version=$(go run "$versionFile")
-fi
+version=$(go run . -v)
 
 getLatestTag
 checkTag=$(git --no-pager tag -l | grep "$version" | xargs)

@@ -1,9 +1,7 @@
 package main
 
-import "fmt"
+const version = "v1.0.2"
 
-const Version = "v1.0.1"
-
-func main() {
-	fmt.Println(Version)
+func getVersion() string {
+	return version
 }
