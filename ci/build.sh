@@ -25,7 +25,7 @@ then
 else
   targetos=$(sw_vers | awk '{print $1$2$3}' | head -n 1)
   echo "Target OS: $targetos"
-  if [[ "$targetos" == *"macOS"* ]];
+  if [[ "$targetos" == *"MacOS"* ]];
   then
   	echo "$PWD"
     env GO111MODULE=on GOOS="darwin" GOARCH="$targetarch" go build -ldflags "-s -w" -o "$name-darwin-""$targetarch"-"$version" .

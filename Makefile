@@ -17,5 +17,5 @@ clean:
 	@ echo -e "\ncleaning...\n" && pushd src/ && rm -f stgexplorer && popd
 
 build: clean
-	@ pushd src/ && go mod tidy && echo -e "\nbuilding...\n" && go build -o stgexplorer main.go && popd
+	@ pushd src/ && go mod tidy && echo -e "\nbuilding...\n" && go build -o stgexplorer . && popd
 	@ ls -lah src/stgexplorer
