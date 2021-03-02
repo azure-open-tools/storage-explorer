@@ -1,3 +1,6 @@
 *.txt
 
 .vscode
+.idea/
+pkg/
+src/stgexplorer
