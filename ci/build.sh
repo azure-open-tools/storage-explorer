@@ -9,6 +9,10 @@ echo "GitHubRef: $GITHUB_REF"
 
 targetos="$OS"
 targetarch="amd64"
+
+# show whats there
+ls -lh
+
 version=$(go run . -v)
 
 echo "Using $version to build"
