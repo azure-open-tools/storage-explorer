@@ -32,7 +32,6 @@ func parseContainer(azContainer az.ContainerItem, p pipeline.Pipeline, accountNa
 
 	for blobMarker := marker; blobMarker.NotDone(); {
 		listBlob, _ := containerServiceURL.ListBlobsFlatSegment(ctx, blobMarker, azblob.ListBlobsSegmentOptions{Details: azblob.BlobListingDetails{Metadata: true}})
-		fmt.Println(fmt.Sprintf("Blobs Marker: %v", blobMarker))
 		blobMarker = listBlob.NextMarker
 		blobItems := listBlob.Segment.BlobItems
 		foundBlobs := parseBlobs(blobItems, blobFilter, showContent, containerServiceURL, metadataFilter)

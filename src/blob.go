@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	b64 "encoding/base64"
-	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -25,7 +24,6 @@ func parseBlobs(blobItems []az.BlobItemInternal, blobFilter string, showContent 
 	bc := make(chan *blob)
 
 	var blobs []blob
-	fmt.Println(len(blobItems))
 
 	for _, blobItem := range blobItems {
 		if len(blobFilter) > 0 && !strings.Contains(blobItem.Name, blobFilter) {
