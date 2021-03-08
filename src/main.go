@@ -96,6 +96,7 @@ func exec(args arguments) {
 			go parseContainer(val, p, args.AccountName, args.ContainerName, args.BlobName, args.ShowContent, c, &wg, marker, metadataFilter)
 		}
 		// used for Pagination
+		fmt.Println(fmt.Sprintf("Container Marker: %v", marker.Val))
 		marker = listContainer.NextMarker
 	}
 
