@@ -30,11 +30,12 @@ func parseContainer(azContainer az.ContainerItem, p pipeline.Pipeline, accountNa
 
 	ctx := context.Background()
 
-	for blobMarker := (azblob.Marker{}); blobMarker.NotDone(); {
-		listBlob, _ := containerServiceURL.ListBlobsFlatSegment(ctx, marker, azblob.ListBlobsSegmentOptions{Details: azblob.BlobListingDetails{Metadata: true}})
+	for blobMarker := marker; blobMarker.NotDone(); {
+		listBlob, _ := containerServiceURL.ListBlobsFlatSegment(ctx, blobMarker, azblob.ListBlobsSegmentOptions{Details: azblob.BlobListingDetails{Metadata: true}})
 		blobMarker = listBlob.NextMarker
 		blobItems := listBlob.Segment.BlobItems
-		containerResult.Blobs = parseBlobs(blobItems, blobFilter, showContent, containerServiceURL, metadataFilter)
+		foundBlobs := parseBlobs(blobItems, blobFilter, showContent, containerServiceURL, metadataFilter)
+		containerResult.Blobs = append(containerResult.Blobs, foundBlobs...)
 	}
 
 	c <- containerResult
