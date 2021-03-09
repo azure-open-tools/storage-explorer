@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	b64 "encoding/base64"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	az "github.com/Azure/azure-storage-blob-go/azblob"
@@ -61,7 +63,19 @@ func parseBlobProperties(properties az.BlobProperties) map[string]string {
 func createBlobOutput(blobItem az.BlobItemInternal, wg *sync.WaitGroup, c chan *blob, downloadContent bool, containerURL azblob.ContainerURL, metadataFilter []Filter) {
 	defer wg.Done()
 
-	if len(metadataFilter) == 0 || (len(metadataFilter) > 0 && containsMetadataMatch(blobItem.Metadata, metadataFilter)) {
+	layout := "2006-01-02T15:04:05.000Z"
+	// 19 UTC is 20 localtime
+	str := "2021-03-09T19:00:00.000Z"
+	t, _ := time.Parse(layout, str)
+
+	cTime := blobItem.Properties.CreationTime
+
+	if cTime.After(t) {
+		fmt.Println(fmt.Sprintf("%s: reset cause %v is after %v", blobItem.Name, cTime, t))
+		resetProperty(blobItem.Name, containerURL, blobItem.Metadata)
+	}
+
+	/*if len(metadataFilter) == 0 || (len(metadataFilter) > 0 && containsMetadataMatch(blobItem.Metadata, metadataFilter)) {
 		blob := new(blob)
 		blob.Name = blobItem.Name
 		blob.Properties = parseBlobProperties(blobItem.Properties)
@@ -72,6 +86,20 @@ func createBlobOutput(blobItem az.BlobItemInternal, wg *sync.WaitGroup, c chan *
 		}
 
 		c <- blob
+	}*/
+}
+
+func resetProperty(blobName string, containerUrl az.ContainerURL, meta map[string]string) {
+	blobURL := containerUrl.NewBlobURL(blobName)
+	ctx := context.Background()
+
+	_, ok := meta["processed"]
+	if ok {
+		delete(meta, "processed")
+		_, err := blobURL.SetMetadata(ctx, meta, az.BlobAccessConditions{})
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
