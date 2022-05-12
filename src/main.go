@@ -93,6 +93,7 @@ func exec(args arguments) {
 
 		for _, val := range listContainer.ContainerItems {
 			wg.Add(1)
+			// TODO remove passing marker. not used cause blob paging use own marker
 			go parseContainer(val, p, args.AccountName, args.ContainerName, args.BlobName, args.ShowContent, c, &wg, marker, metadataFilter)
 		}
 		// used for Pagination
