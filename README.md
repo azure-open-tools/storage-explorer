@@ -1,4 +1,4 @@
-# go-storage-information
+# azure-storage-information
 
 [![storage-information](https://github.com/azure-open-tools/storage-explorer/actions/workflows/storage-information.yml/badge.svg)](https://github.com/azure-open-tools/storage-explorer/actions/workflows/storage-information.yml)
 
@@ -14,8 +14,11 @@ Furthermore it is possible to filter for a certain Storage Container Names or/an
 * `--container` or `-c`: (optional) filter for a specific container by it names. Substring match
 * `--blob` or `-b`: (optional) filter for specific blobs by it names. Substring match
 * `--metadata-filter` or `-m`: (optional) filter for metadata <key:value>. Shows only the blobs matching at least one given filter.
+* `--msi` or `-i`: (optional) give ObjectId of user assigned Identity (instead of working with accessKey)
 * `--show-content`: (optional) prints additionally the content of the blobs
 
+## System Assigned Identity
+If using system assigned Identity, leave `accessKey` and `msi` empty.
 ## Examples
 * `./asi --accountName <myStorageAccountName> --accessKey <myStorageAccessKey> -c test -b myblob` will show only blobs including myblob in their names only stored in containers including test in their names.
 
