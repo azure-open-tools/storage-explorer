@@ -6,25 +6,27 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"sync"
+	"strings"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/spf13/cobra"
 )
 
-type container struct {
-	Name  string `json:"name"`
-	Blobs []blob `json:"blobs"`
+type myContainer struct {
+	Name  string   `json:"name"`
+	Blobs []myBlob `json:"blobs"`
 }
 
 type storageAccount struct {
-	Name      string      `json:"name"`
-	Container []container `json:"container"`
+	Name      string        `json:"name"`
+	Container []myContainer `json:"container"`
 }
 
 type arguments struct {
 	AccountName    string
 	AccessKey      string
+	MSI            string
 	ContainerName  string
 	BlobName       string
 	ShowContent    bool
@@ -45,74 +47,88 @@ Complete documentation is available at http://hugo.spf13.com`,
 }
 
 const (
-	storageURLTemplate   = "https://%s.blob.core.windows.net"
-	containerURLTemplate = "https://%s.blob.core.windows.net/%s"
+	storageURLTemplate = "https://%s.blob.core.windows.net"
 )
+
+var foundContainer []myContainer
 
 func init() {
 	rootCmd.Flags().StringVarP(&largs.AccountName, "accountName", "n", "", "accountName of the Storage Account")
 	rootCmd.Flags().StringVarP(&largs.AccessKey, "accessKey", "k", "", "accessKey for the Storage Account")
+	rootCmd.Flags().StringVarP(&largs.MSI, "msi", "i", "", "user assigned managed Identity to Access the Storage Account")
 	rootCmd.Flags().StringVarP(&largs.ContainerName, "container", "c", "", "filter for container name with substring match")
 	rootCmd.Flags().StringVarP(&largs.BlobName, "blob", "b", "", "filter for blob name with substring match")
 	rootCmd.Flags().BoolVar(&largs.ShowContent, "show-content", false, "downloads and prints content of blobs in addition to other logs")
 	rootCmd.Flags().StringSliceVarP(&largs.MetadataFilter, "metadata-filter", "m", []string{}, "OR filter for blob metadata. Structure is <key>:<value>")
 	rootCmd.MarkFlagRequired("accountName")
-	rootCmd.MarkFlagRequired("accessKey")
 	rootCmd.SetVersionTemplate(getVersion())
 }
 
 func exec(args arguments) {
 	ctx := context.Background()
-
-	// Create a default request pipeline using your storage account name and account key
-	credential, authErr := azblob.NewSharedKeyCredential(args.AccountName, args.AccessKey)
-	if authErr != nil {
-		log.Fatal("Error while Authentication")
-	}
-	p := azblob.NewPipeline(credential, azblob.PipelineOptions{})
-
-	// From the Azure portal, get your storage account blob service URL endpoint
-	URL, _ := url.Parse(fmt.Sprintf(storageURLTemplate, args.AccountName))
-
-	serviceURL := azblob.NewServiceURL(*URL, p)
-
-	s := new(storageAccount)
-	s.Name = URL.String()
-	var foundContainer []container
+	var clientError error
+	var client *azblob.Client
 
 	metadataFilter := createMetadataFilter(args.MetadataFilter)
 
-	c := make(chan *container)
-	var wg sync.WaitGroup
-	for marker := (azblob.Marker{}); marker.NotDone(); {
-		listContainer, err := serviceURL.ListContainersSegment(ctx, marker, azblob.ListContainersSegmentOptions{})
+	URL, _ := url.Parse(fmt.Sprintf(storageURLTemplate, args.AccountName))
 
-		if err != nil {
-			log.Fatal("Error while getting Container")
+	// if AccessKey is provided use them
+	if len(args.AccessKey) > 0 {
+		keyCredentials, authErr := azblob.NewSharedKeyCredential(args.AccountName, args.AccessKey)
+		if authErr != nil {
+			log.Fatal("Error while Authentication with AccessKey", authErr)
+		}
+		client, clientError = azblob.NewClientWithSharedKeyCredential(URL.String(), keyCredentials, nil)
+	} else {
+		var authErr error
+		var credentials *azidentity.ManagedIdentityCredential
+
+		// if user assigned managed identity is provided use them
+		if len(args.MSI) > 0 {
+			options := azidentity.ManagedIdentityCredentialOptions{}
+			options.ID = azidentity.ClientID(args.MSI)
+			credentials, authErr = azidentity.NewManagedIdentityCredential(&options)
+		} else {
+			// for system assigned managed identity we don't need to pass anything
+			credentials, authErr = azidentity.NewManagedIdentityCredential(nil)
 		}
 
-		for _, val := range listContainer.ContainerItems {
-			wg.Add(1)
-			// TODO remove passing marker. not used cause blob paging use own marker
-			go parseContainer(val, p, args.AccountName, args.ContainerName, args.BlobName, args.ShowContent, c, &wg, marker, metadataFilter)
+		if authErr != nil {
+			log.Fatal("Error while Authentication with DefaultCredentials", authErr)
 		}
-		// used for Pagination
-		marker = listContainer.NextMarker
+
+		client, clientError = azblob.NewClient(URL.String(), credentials, nil)
 	}
 
-	// wait for all entries in waitgroup and close then the channel
-	go func() {
-		wg.Wait()
-		close(c)
-	}()
-
-	// channel to collect results
-	for elem := range c {
-		foundContainer = append(foundContainer, *elem)
+	if clientError != nil {
+		log.Fatal("Error while initializing client", clientError)
 	}
 
-	s.Container = foundContainer
-	print(*s)
+	containerPager := client.NewListContainersPager(nil)
+	for containerPager.More() {
+		page, pageErr := containerPager.NextPage(ctx)
+		if pageErr != nil {
+			log.Fatal(pageErr.Error())
+		}
+		for _, container := range page.ContainerItems {
+			// TODO substring match? to match containers: ['test-1', 'test-2'], term: 'test, matches ['test-1', 'test-2']
+			if len(args.ContainerName) == 0 || strings.Contains(*container.Name, args.ContainerName) {
+				foundBlobs := queryBlobs(ctx, *container.Name, args.BlobName, args.ShowContent, client, metadataFilter)
+				c := myContainer{
+					Name:  args.ContainerName,
+					Blobs: foundBlobs,
+				}
+				foundContainer = append(foundContainer, c)
+			}
+		}
+	}
+
+	sa := storageAccount{
+		Name:      args.AccountName,
+		Container: foundContainer,
+	}
+	print(sa)
 }
 
 func print(sa storageAccount) {
@@ -120,10 +136,6 @@ func print(sa storageAccount) {
 	fmt.Println(string(m))
 }
 
-// kudos to:
-// https://github.com/Azure/azure-storage-blob-go/blob/456ab4777f89ceb54316ddf71d2acfd39bb86e1d/azblob/zt_examples_test.go
-// and
-// https://github.com/Azure-Samples/storage-blobs-go-quickstart/blob/master/storage-quickstart.go
 func main() {
 	rootCmd.Execute()
 }

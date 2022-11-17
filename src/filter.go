@@ -7,14 +7,14 @@ type Filter struct {
 	Value string
 }
 
-func containsMetadataMatch(metadata map[string]string, filter []Filter) bool {
+func containsMetadataMatch(metadata map[string]*string, filter []Filter) bool {
 	if len(metadata) == 0 {
 		return false
 	}
 
 	for _, entry := range filter {
 		if val, ok := metadata[entry.Key]; ok {
-			if strings.Contains(val, entry.Value) {
+			if strings.Contains(*val, entry.Value) {
 				return true
 			}
 		}
