@@ -1,95 +1,94 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	b64 "encoding/base64"
 	"log"
 	"strings"
-	"sync"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
-	az "github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 )
 
-type blob struct {
-	Name       string            `json:"name"`
-	Content    []byte            `json:"content"`
-	Properties map[string]string `json:"Properties"`
-	Metadata   map[string]string `json:"metadata"`
+type myBlob struct {
+	Name       string             `json:"name"`
+	Content    []byte             `json:"content"`
+	Properties map[string]string  `json:"Properties"`
+	Metadata   map[string]*string `json:"metadata"`
 }
 
-func parseBlobs(blobItems []az.BlobItemInternal, blobFilter string, showContent bool, containerURL azblob.ContainerURL, metadataFilter []Filter) []blob {
-	var blobWg sync.WaitGroup
-	bc := make(chan *blob)
+func queryBlobs(ctx context.Context, containerName string, blobNameFiler string, showContent bool, client *azblob.Client, metadataFilter []Filter) []myBlob {
+	pager := client.NewListBlobsFlatPager(containerName, nil)
+	var foundBlobs []myBlob
+	// continue fetching pages until no more remain
+	for pager.More() {
+		// advance to the next page
+		page, err := pager.NextPage(ctx)
 
-	var blobs []blob
-
-	for _, blobItem := range blobItems {
-		if len(blobFilter) > 0 && !strings.Contains(blobItem.Name, blobFilter) {
-			continue
+		if err != nil {
+			log.Fatal(err)
 		}
-		blobWg.Add(1)
-		go createBlobOutput(blobItem, &blobWg, bc, showContent, containerURL, metadataFilter)
-	}
 
-	go func() {
-		blobWg.Wait()
-		close(bc)
-	}()
-
-	for elem := range bc {
-		blobs = append(blobs, *elem)
+		for _, blob := range page.Segment.BlobItems {
+			// TODO substring match? to match blobs: ['test-1', 'test-2'], term: 'test, matches ['test-1', 'test-2']
+			if len(blobNameFiler) == 0 || strings.Contains(*blob.Name, blobNameFiler) {
+				b := createBlobOutput(ctx, client, containerName, *blob, showContent, metadataFilter)
+				if b != nil {
+					foundBlobs = append(foundBlobs, *b)
+				}
+			}
+		}
 	}
-	return blobs
+	return foundBlobs
 }
 
-func parseBlobProperties(properties az.BlobProperties) map[string]string {
+func parseBlobProperties(properties *container.BlobProperties) map[string]string {
 	result := make(map[string]string)
 
-	result["Blob Type"] = string(properties.BlobType)
 	result["Content MD5"] = b64.StdEncoding.EncodeToString(properties.ContentMD5)
 	result["Created at"] = properties.CreationTime.String()
 	result["Last modified at"] = properties.LastModified.String()
-	result["Lease Status"] = string(properties.LeaseStatus)
-	result["Lease State"] = string(properties.LeaseState)
-	result["Lease Duration"] = string(properties.LeaseDuration)
+
+	if properties.BlobType != nil {
+		result["Blob Type"] = string(*properties.BlobType)
+	}
+
+	if properties.LeaseStatus != nil {
+		result["Lease Status"] = string(*properties.LeaseStatus)
+	}
+
+	if properties.LeaseState != nil {
+		result["Lease State"] = string(*properties.LeaseState)
+	}
+
+	if properties.LeaseDuration != nil {
+		result["Lease Duration"] = string(*properties.LeaseDuration)
+	}
 
 	return result
 }
 
-func createBlobOutput(blobItem az.BlobItemInternal, wg *sync.WaitGroup, c chan *blob, downloadContent bool, containerURL azblob.ContainerURL, metadataFilter []Filter) {
-	defer wg.Done()
+func downloadBlob(ctx context.Context, containerName string, blobName string, client *azblob.Client) []byte {
+	var buffer []byte
+	// TODO make it work
+	// _, err := client.DownloadBuffer(ctx, containerName, blobName, buffer, nil)
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+	return buffer
+}
 
+func createBlobOutput(ctx context.Context, client *azblob.Client, containerName string, blobItem container.BlobItem, downloadContent bool, metadataFilter []Filter) *myBlob {
 	if len(metadataFilter) == 0 || (len(metadataFilter) > 0 && containsMetadataMatch(blobItem.Metadata, metadataFilter)) {
-		blob := new(blob)
-		blob.Name = blobItem.Name
+		blob := new(myBlob)
+		blob.Name = *blobItem.Name
 		blob.Properties = parseBlobProperties(blobItem.Properties)
 		blob.Metadata = blobItem.Metadata
 
 		if downloadContent {
-			blob.Content = downloadBlob(blobItem.Name, containerURL)
+			blob.Content = downloadBlob(ctx, containerName, *blobItem.Name, client)
 		}
-
-		c <- blob
+		return blob
 	}
-}
-
-func downloadBlob(blobName string, containerUrl az.ContainerURL) []byte {
-	blobURL := containerUrl.NewBlockBlobURL(blobName)
-	downloadResponse, err := blobURL.Download(context.Background(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
-
-	if err != nil {
-		log.Fatalf("Error downloading blob %s", blobName)
-	}
-
-	bodyStream := downloadResponse.Body(azblob.RetryReaderOptions{MaxRetryRequests: 20})
-	downloadedData := bytes.Buffer{}
-	_, err = downloadedData.ReadFrom(bodyStream)
-
-	if err != nil {
-		log.Fatalf("Error reading blob %s", blobName)
-	}
-
-	return downloadedData.Bytes()
+	return nil
 }
