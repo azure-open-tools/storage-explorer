@@ -13,7 +13,7 @@ targetarch="amd64"
 cd src/
 version=$(go run . -v)
 
-if [[ "$targetos" == *"Windows_NT"* ]];
+if [[ "$targetos" == *"Windows"* ]];
 then
 	set GOARCH="$targetarch"
 	set GOOS="$targetos"
@@ -23,8 +23,6 @@ then
 	mv "$name-windows-""$targetarch"-"$version""$extension" ../
 	ls -lah
 else
-  targetos=$(sw_vers | awk '{print $1$2$3}' | head -n 1)
-  echo "Target OS: $targetos"
   if [[ "$targetos" == *"MacOS"* ]];
   then
   	echo "$PWD"
