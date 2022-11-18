@@ -3,8 +3,8 @@
 name=$1
 
 go version
-echo "$OS"
-echo "$targetarch"
+echo "OS: $RUNNER_OS"
+echo "Arch: $RUNNER_ARCH"
 echo "GitHubRef: $GITHUB_REF"
 
 targetos="$OS"
