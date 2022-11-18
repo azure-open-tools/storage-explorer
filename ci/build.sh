@@ -23,7 +23,7 @@ then
 	mv "$name-windows-""$targetarch"-"$version""$extension" ../
 	ls -lah
 else
-  if [[ "$targetos" == *"MacOS"* ]];
+  if [[ "$targetos" == *"macOS"* ]];
   then
   	echo "$PWD"
     env GO111MODULE=on GOOS="darwin" GOARCH="$targetarch" go build -ldflags "-s -w" -o "$name-darwin-""$targetarch"-"$version" .
