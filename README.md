@@ -18,8 +18,13 @@ Furthermore it is possible to filter for a certain Storage Container Names or/an
 * `--show-content`: (optional) prints additionally the content of the blobs
 
 ## System Assigned Identity
+
 If using system assigned Identity, leave `accessKey` and `msi` empty.
+
+See [Github Ticket 1850](https://github.com/Azure/azure-sdk-for-go/issues/18501#issuecomment-1180746751)
+
 ## Examples
+
 * `./asi --accountName <myStorageAccountName> --accessKey <myStorageAccessKey> -c test -b myblob` will show only blobs including myblob in their names only stored in containers including test in their names.
 
 
