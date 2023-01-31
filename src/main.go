@@ -105,7 +105,13 @@ func exec(args arguments) {
 		log.Fatal("Error while initializing client", clientError)
 	}
 
-	containerPager := client.NewListContainersPager(nil)
+	containerPager := client.NewListContainersPager(&azblob.ListContainersOptions{
+		Include: azblob.ListContainersInclude{
+			Metadata: true, Deleted: false,
+		},
+		Marker: new(string),
+	})
+
 	for containerPager.More() {
 		page, pageErr := containerPager.NextPage(ctx)
 		if pageErr != nil {
@@ -121,6 +127,15 @@ func exec(args arguments) {
 				}
 				foundContainer = append(foundContainer, c)
 			}
+		}
+
+		if page.NextMarker != nil && len(*page.NextMarker) != 0 {
+			containerPager = client.NewListContainersPager(&azblob.ListContainersOptions{
+				Include: azblob.ListContainersInclude{
+					Metadata: true, Deleted: false,
+				},
+				Marker: page.NextMarker,
+			})
 		}
 	}
 
