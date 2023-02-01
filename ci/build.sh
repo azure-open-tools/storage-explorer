@@ -22,21 +22,18 @@ then
 	go build -ldflags "-s -w" -o "$name-windows-""$targetarch"-"$version""$extension" .
 	mv "$name-windows-""$targetarch"-"$version""$extension" ../
 	ls -lah
-fi
 
-if [[ "$targetos" == *"macOS"* ]];
+elif [[ "$targetos" == *"macOS"* ]];
 then
   	echo "$PWD"
     env GO111MODULE=on GOOS="darwin" GOARCH="$targetarch" go build -ldflags "-s -w" -o "$name-darwin-""$targetarch"-"$version" .
   	mv "$name-darwin-""$targetarch"-"$version" ../
-fi
 
-if [[ "$targetos" == *"Linux"* ]];
+elif [[ "$targetos" == *"Linux"* ]];
 then
   	env GO111MODULE=on GOOS="linux" GOARCH="$targetarch" go build -ldflags "-s -w" -o "$name-linux-""$targetarch"-"$version" .
     mv "$name-linux-""$targetarch"-"$version" ../
 else
-	echo "ERROR: $targetos is not supported"
+	echo "ERROR: RUNNER:OS=$targetos is not supported"
     exit 1
 fi
-
