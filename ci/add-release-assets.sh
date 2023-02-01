@@ -30,6 +30,4 @@ echo "$PWD"
 echo "Latest Tag: $latestTag"
 
 # find artifact
-find . -type f -iname "asi-*" -exec ls -lah {​​​​​}​​​​​ \;
-
 find . -type f -iname "asi-*" -exec hub release edit -m "" -a {} "$latestTag" \;
