@@ -3,11 +3,11 @@
 name=$1
 
 go version
-echo "OS: $RUNNER_OS"
-echo "Arch: $RUNNER_ARCH"
+echo "RUNNER_OS: $RUNNER_OS"
+echo "RUNNER_Arch: $RUNNER_ARCH"
 echo "GitHubRef: $GITHUB_REF"
 
-targetos="$OS"
+targetos="$RUNNER_OS"
 targetarch="amd64"
 
 cd src/
@@ -22,14 +22,21 @@ then
 	go build -ldflags "-s -w" -o "$name-windows-""$targetarch"-"$version""$extension" .
 	mv "$name-windows-""$targetarch"-"$version""$extension" ../
 	ls -lah
-else
-  if [[ "$targetos" == *"macOS"* ]];
-  then
+fi
+
+if [[ "$targetos" == *"macOS"* ]];
+then
   	echo "$PWD"
     env GO111MODULE=on GOOS="darwin" GOARCH="$targetarch" go build -ldflags "-s -w" -o "$name-darwin-""$targetarch"-"$version" .
   	mv "$name-darwin-""$targetarch"-"$version" ../
-  else
+fi
+
+if [[ "$targetos" == *"Linux"* ]];
+then
   	env GO111MODULE=on GOOS="linux" GOARCH="$targetarch" go build -ldflags "-s -w" -o "$name-linux-""$targetarch"-"$version" .
     mv "$name-linux-""$targetarch"-"$version" ../
-  fi
+else
+	echo "ERROR: $targetos is not supported"
+    exit 1
 fi
+
